@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Rackline — Network Device Inventory System
 
 A full-stack app for tracking network devices, their IP addresses, and their
@@ -178,3 +179,6 @@ read with filters/search, update, delete, invalid-input rejection,
 duplicate-hostname rejection, invalid MAC/IP rejection, and 404 handling)
 against the live Flask server before this was handed off — see the API
 reference above for the exact request shapes that were verified.
+=======
+# Network-Device-Inventory-System
+>>>>>>> 834b7bb5654a24e7e98968d85223ca9f02d72170
