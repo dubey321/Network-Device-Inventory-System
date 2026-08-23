@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rackline — Network Device Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============================= sidebar ============================= -->
+  <aside class="rail">
+    <div class="rail-brand">
+      <span class="rail-brand-mark">▍▍</span>
+      <span class="rail-brand-name">Rackline</span>
+    </div>
+
+    <nav class="rail-nav">
+      <button class="rail-port active" data-view="dashboard">
+        <span class="port-jack"></span> Dashboard
+      </button>
+      <button class="rail-port" data-view="devices">
+        <span class="port-jack"></span> Devices
+      </button>
+      <button class="rail-port" data-view="locations">
+        <span class="port-jack"></span> Locations
+      </button>
+    </nav>
+
+    <div class="rail-footer">
+      <span class="rail-footer-label">API</span>
+      <span id="api-indicator" class="api-indicator">
+        <span class="dot"></span> checking…
+      </span>
+    </div>
+  </aside>
+
+  <!-- ============================== main ================================ -->
+  <main class="main">
+
+    <!-- status strip: shared across views -->
+    <header class="status-strip" id="status-strip">
+      <div class="strip-chip" data-stat="total">
+        <span class="chip-led led-trace"></span>
+        <span class="chip-value" id="stat-total">–</span>
+        <span class="chip-label">devices patched in</span>
+      </div>
+      <div class="strip-chip" data-stat="active">
+        <span class="chip-led led-uplink"></span>
+        <span class="chip-value" id="stat-active">–</span>
+        <span class="chip-label">active</span>
+      </div>
+      <div class="strip-chip" data-stat="maintenance">
+        <span class="chip-led led-amber"></span>
+        <span class="chip-value" id="stat-maintenance">–</span>
+        <span class="chip-label">maintenance</span>
+      </div>
+      <div class="strip-chip" data-stat="offline">
+        <span class="chip-led led-fault"></span>
+        <span class="chip-value" id="stat-offline">–</span>
+        <span class="chip-label">offline</span>
+      </div>
+      <div class="strip-chip" data-stat="locations">
+        <span class="chip-led led-decom"></span>
+        <span class="chip-value" id="stat-locations">–</span>
+        <span class="chip-label">locations</span>
+      </div>
+    </header>
+
+    <!-- ------------------------- Dashboard view ------------------------- -->
+    <section class="view" id="view-dashboard">
+      <div class="view-head">
+        <div>
+          <h1>Patch sheet overview</h1>
+          <p class="view-sub">A live read of everything wired into the fleet.</p>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="panel">
+          <h2>By device type</h2>
+          <div id="chart-type" class="bar-chart"></div>
+        </div>
+        <div class="panel">
+          <h2>By location</h2>
+          <div id="chart-location" class="bar-chart"></div>
+        </div>
+        <div class="panel panel-wide">
+          <h2>Needs attention</h2>
+          <div id="attention-list" class="attention-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- -------------------------- Devices view --------------------------- -->
+    <section class="view" id="view-devices" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Devices</h1>
+          <p class="view-sub">Every hop, host, and box on record.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-add-device">+ Add device</button>
+      </div>
+
+      <div class="toolbar">
+        <input type="search" id="search-input" class="input" placeholder="Search hostname, IP, serial, MAC…" />
+        <select id="filter-type" class="input select"><option value="">All types</option></select>
+        <select id="filter-status" class="input select"><option value="">All statuses</option></select>
+        <select id="filter-location" class="input select"><option value="">All locations</option></select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="device-table">
+          <thead>
+            <tr>
+              <th class="col-led"></th>
+              <th>Hostname</th>
+              <th>Type</th>
+              <th>Manufacturer / Model</th>
+              <th>IP address(es)</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody id="device-tbody">
+            <!-- rows injected here -->
+          </tbody>
+        </table>
+        <div id="devices-empty" class="empty-state" hidden>
+          <p class="empty-title">No ports match that query.</p>
+          <p class="empty-sub">Clear a filter, or add the device you're looking for.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------- Locations view --------------------------- -->
+    <section class="view" id="view-locations" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Locations</h1>
+          <p class="view-sub">Sites, buildings, and rooms devices are racked in.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-add-location">+ Add location</button>
+      </div>
+
+      <div class="location-grid" id="location-grid">
+        <!-- location cards injected here -->
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============================ device modal ============================ -->
+<div class="modal-backdrop" id="device-modal-backdrop" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="device-modal-title">Add device</h2>
+      <button class="modal-close" id="device-modal-close" aria-label="Close">✕</button>
+    </div>
+    <form id="device-form" class="modal-body">
+      <input type="hidden" id="device-id" />
+
+      <div class="form-grid">
+        <label class="field">
+          <span>Hostname *</span>
+          <input type="text" id="f-hostname" required placeholder="edge-fw-02" />
+        </label>
+        <label class="field">
+          <span>Device type *</span>
+          <select id="f-device_type" required></select>
+        </label>
+        <label class="field">
+          <span>Status</span>
+          <select id="f-status"></select>
+        </label>
+        <label class="field">
+          <span>Location</span>
+          <select id="f-location_id"><option value="">— unassigned —</option></select>
+        </label>
+        <label class="field">
+          <span>Manufacturer</span>
+          <input type="text" id="f-manufacturer" placeholder="Cisco" />
+        </label>
+        <label class="field">
+          <span>Model</span>
+          <input type="text" id="f-model" placeholder="Catalyst 9300" />
+        </label>
+        <label class="field">
+          <span>Serial number</span>
+          <input type="text" id="f-serial_number" placeholder="SN-0001" />
+        </label>
+        <label class="field">
+          <span>MAC address</span>
+          <input type="text" id="f-mac_address" placeholder="AA:BB:CC:DD:EE:FF" />
+        </label>
+        <label class="field">
+          <span>OS / firmware version</span>
+          <input type="text" id="f-os_version" placeholder="IOS-XE 17.9" />
+        </label>
+        <label class="field">
+          <span>Purchase date</span>
+          <input type="date" id="f-purchase_date" />
+        </label>
+        <label class="field">
+          <span>Warranty expiry</span>
+          <input type="date" id="f-warranty_expiry" />
+        </label>
+      </div>
+
+      <label class="field field-wide">
+        <span>Notes</span>
+        <textarea id="f-notes" rows="2" placeholder="Anything worth remembering about this box…"></textarea>
+      </label>
+
+      <div class="ip-section">
+        <div class="ip-section-head">
+          <span>IP addresses</span>
+          <button type="button" class="btn btn-ghost btn-small" id="btn-add-ip-row">+ Add IP</button>
+        </div>
+        <div id="ip-rows"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-delete-device" hidden>Delete device</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-device">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save device</button>
+        </div>
+      </div>
+      <p class="form-error" id="device-form-error" hidden></p>
+    </form>
+  </div>
+</div>
+
+<!-- =========================== location modal ============================ -->
+<div class="modal-backdrop" id="location-modal-backdrop" hidden>
+  <div class="modal modal-small">
+    <div class="modal-head">
+      <h2 id="location-modal-title">Add location</h2>
+      <button class="modal-close" id="location-modal-close" aria-label="Close">✕</button>
+    </div>
+    <form id="location-form" class="modal-body">
+      <input type="hidden" id="loc-id" />
+      <label class="field field-wide">
+        <span>Name *</span>
+        <input type="text" id="loc-name" required placeholder="HQ - Data Center 2" />
+      </label>
+      <div class="form-grid">
+        <label class="field">
+          <span>Site / city</span>
+          <input type="text" id="loc-site" placeholder="New York" />
+        </label>
+        <label class="field">
+          <span>Building</span>
+          <input type="text" id="loc-building" placeholder="Building A" />
+        </label>
+        <label class="field">
+          <span>Floor</span>
+          <input type="text" id="loc-floor" placeholder="3" />
+        </label>
+        <label class="field">
+          <span>Room</span>
+          <input type="text" id="loc-room" placeholder="NC-304" />
+        </label>
+      </div>
+      <label class="field field-wide">
+        <span>Notes</span>
+        <textarea id="loc-notes" rows="2"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-delete-location" hidden>Delete location</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-location">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save location</button>
+        </div>
+      </div>
+      <p class="form-error" id="location-form-error" hidden></p>
+    </form>
+  </div>
+</div>
+
+<!-- ============================ toast rail =============================== -->
+<div class="toast-rail" id="toast-rail"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
